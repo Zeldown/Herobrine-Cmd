@@ -1,7 +1,6 @@
 <div align="center">
 
 # Herobrine-Cmd
-## Forge Command Framework
 
 <div align="center" >
   <img align="center" src="https://img.shields.io/badge/version-1.0.0 (xxxxxxx)-blue">
