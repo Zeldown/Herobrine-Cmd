@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  FILE: herobrinecmd.jar
+  NAME: HerobrineCmd
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+      - name: Validate Gradle wrapper
+        uses: gradle/wrapper-validation-action@e6e38bacfdf1a337459f332974bb2327a31aaf4b
+      - name: Build with Gradle
+        run: chmod +x gradlew && ./gradlew build -PMAVEN_REPO_USER=${{ secrets.MAVEN_REPO_USER }} -PMAVEN_REPO_PASS=${{ secrets.MAVEN_REPO_PASS }}
+      - name: 'Upload artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifact.jar
+          path: "build/libs/${{ env.FILE }}"
+          retention-days: 1
+  release:
+    name: Release Generator
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Get Server
+        uses: actions/download-artifact@v3
+        with:
+          name: artifact.jar
+      - name: Rename Files
+        run: mv $FILE Server.jar && cp Server.jar Client.jar
+      - name: Generate Changelog
+        run: echo "# ${{ env.NAME }} Release" > ${{ github.workspace }}-CHANGELOG.txt
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: ${{ github.workspace }}-CHANGELOG.txt
+          files: |
+            Server.jar
+            Client.jar
