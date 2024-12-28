@@ -12,6 +12,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.bukkit.Bukkit;
+import org.bukkit.World;
+import org.bukkit.entity.Player;
+
 import be.zeldown.herobrinecmd.lib.SenderType;
 import be.zeldown.herobrinecmd.lib.command.annotation.Command;
 import be.zeldown.herobrinecmd.lib.command.annotation.CommandParameter;
@@ -25,14 +29,8 @@ import be.zeldown.herobrinecmd.lib.command.parser.dto.SubCommandEntry.StaticSubC
 import be.zeldown.herobrinecmd.lib.command.parser.dto.SubCommandEntry.SubCommandParameter;
 import be.zeldown.herobrinecmd.lib.entity.OfflinePlayer;
 import be.zeldown.herobrinecmd.lib.utils.FastUUID;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import lombok.NonNull;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.World;
 
-@SideOnly(Side.SERVER)
 public final class CommandParser {
 
 	public static CommandEntry parseCommand(final @NonNull Class<?> clazz) {
@@ -58,6 +56,7 @@ public final class CommandParser {
 
 		final String commandName = aliases[0];
 		final String description = command.description();
+		final String permission = command.permission();
 		final SenderType[] sender = command.sender();
 		final boolean help = command.help();
 
@@ -78,9 +77,9 @@ public final class CommandParser {
 			}
 
 			if (help) {
-				subCommandList.add(new SubCommandEntry(commandName, "affiche l'aide de la commande", new SenderType[] {SenderType.ALL}, true, Integer.MAX_VALUE, instance, null, new SubCommandParameter[] {new StaticSubCommandParameter("help"), new DynamicSubCommandParameter("[<page>]", "numéro de la page d'aide", "", new String[] {}, true, false, null, Integer.class)}).callback((ctx, cmd) -> cmd.help(ctx, ctx.get(1, Integer.class) == null ? 0 : ctx.get(1, Integer.class).intValue() - 1)));
+				subCommandList.add(new SubCommandEntry(commandName, "show help", permission, new SenderType[] {SenderType.ALL}, true, Integer.MAX_VALUE, instance, null, new SubCommandParameter[] {new StaticSubCommandParameter("help"), new DynamicSubCommandParameter("[<page>]", "numéro de la page d'aide", "", new String[] {}, true, false, null, Integer.class)}).callback((ctx, cmd) -> cmd.help(ctx, ctx.get(1, Integer.class) == null ? 0 : ctx.get(1, Integer.class).intValue() - 1)));
 			}
-			return new CommandEntry(instance, commandName, aliases, description, sender, help, subCommandList.stream().sorted(Comparator.comparing(SubCommandEntry::getPriority).reversed()).collect(Collectors.toList()));
+			return new CommandEntry(instance, commandName, aliases, description, permission, sender, help, subCommandList.stream().sorted(Comparator.comparing(SubCommandEntry::getPriority).reversed()).collect(Collectors.toList()));
 		} catch (final Exception e) {
 			throw new IllegalArgumentException("Unable to parse command: " + clazz.getName() + " as it does not have a default constructor");
 		}
@@ -135,6 +134,7 @@ public final class CommandParser {
 
 		final String commandName = arguments.get(0).startsWith("/") ? arguments.get(0).substring(1) : arguments.get(0);
 		final String description = command.description();
+		final String permission = command.permission();
 		final SenderType[] sender = command.sender().length == 0 || command.sender()[0] == SenderType.NONE ? defaultSenderTypes : command.sender();
 		final boolean help = command.help();
 		final int priority = command.priority();
@@ -201,7 +201,7 @@ public final class CommandParser {
 			throw new IllegalArgumentException("Unable to parse sub-command: " + method.getName() + " as the number of parameters does not match the number of arguments");
 		}
 
-		return new SubCommandEntry(commandName, description, sender, help, priority, instance, method, parameters.toArray(new SubCommandParameter[0]));
+		return new SubCommandEntry(commandName, description, permission, sender, help, priority, instance, method, parameters.toArray(new SubCommandParameter[0]));
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -211,20 +211,18 @@ public final class CommandParser {
 		}
 
 		try {
-			if (type.isAssignableFrom(EntityPlayer.class)) {
+			if (type.isAssignableFrom(Player.class)) {
 				if (FastUUID.isUUID(argument)) {
 					try {
 						final UUID uuid = FastUUID.from(argument);
-						for (final World world : MinecraftServer.getServer().worldServers) {
-							final EntityPlayer player = world.func_152378_a(uuid);
-							if (player != null) {
-								return type.cast(player);
-							}
+						final Player player = Bukkit.getPlayer(uuid);
+						if (player != null) {
+							return type.cast(player);
 						}
 					} catch (final Exception e) {}
 				}
 
-				return type.cast(MinecraftServer.getServer().getConfigurationManager().func_152612_a(argument));
+				return type.cast(Bukkit.getPlayer(argument));
 			}
 
 			if (type.isAssignableFrom(OfflinePlayer.class)) {
@@ -258,11 +256,7 @@ public final class CommandParser {
 			}
 
 			if (type.isAssignableFrom(World.class)) {
-				for (final World world : MinecraftServer.getServer().worldServers) {
-					if (argument.equalsIgnoreCase(world.getWorldInfo().getWorldName())) {
-						return type.cast(world);
-					}
-				}
+				return type.cast(Bukkit.getWorld(argument));
 			}
 
 			if (type.isEnum()) {

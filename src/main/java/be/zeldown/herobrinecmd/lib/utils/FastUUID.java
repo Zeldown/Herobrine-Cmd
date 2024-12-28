@@ -3,8 +3,9 @@ package be.zeldown.herobrinecmd.lib.utils;
 import java.util.Arrays;
 import java.util.UUID;
 
+import org.bukkit.entity.Entity;
+
 import lombok.NonNull;
-import net.minecraft.entity.Entity;
 
 public class FastUUID {
 
@@ -131,7 +132,7 @@ public class FastUUID {
 	}
 
 	public static String toString(final @NonNull Entity entity) {
-		return FastUUID.toString(entity.getUniqueID());
+		return FastUUID.toString(entity.getUniqueId());
 	}
 
 	public static String toString(final @NonNull UUID uuid) {

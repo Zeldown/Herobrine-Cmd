@@ -11,11 +11,10 @@ import be.zeldown.herobrinecmd.lib.command.context.CommandContext;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import net.minecraft.event.ClickEvent;
-import net.minecraft.event.HoverEvent;
-import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.ChatStyle;
-import net.minecraft.util.EnumChatFormatting;
+import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
 
 @Getter
 @RequiredArgsConstructor
@@ -28,6 +27,7 @@ public final class CommandEntry {
 	private final String       command;
 	private final String[]     aliases;
 	private final String       description;
+	private final String       permission;
 	private final SenderType[] sender;
 	private final boolean      help;
 
@@ -51,16 +51,13 @@ public final class CommandEntry {
 		final String spacer = "§7§m" + StringUtils.repeat(CommandEntry.SPACER.charAt(0), (CommandEntry.SPACER.length() - (header.length() - 10)) / 2);
 		final int length = header.length() - 10 + (spacer.length() - 4) * 2 - 1;
 
-		final ChatComponentText headerComponent = new ChatComponentText(spacer + header + spacer);
+		final ComponentBuilder headerComponent = new ComponentBuilder(spacer + header + spacer);
 		if (this.description != null && !this.description.isEmpty()) {
-			final ChatStyle style = new ChatStyle();
-			style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§7" + StringUtils.capitalize(this.description.endsWith(".") ? this.description : this.description + "."))));
-			style.setColor(EnumChatFormatting.GRAY);
-			headerComponent.setChatStyle(style);
+			headerComponent.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("§7" + StringUtils.capitalize(this.description.endsWith(".") ? this.description : this.description + ".")).create())).color(ChatColor.GRAY);
 		}
 
 		context.breakLine();
-		context.send(headerComponent);
+		context.send(headerComponent.create());
 		context.breakLine();
 
 		int index = 0;
@@ -80,30 +77,26 @@ public final class CommandEntry {
 
 		if (page != maxPage - 1) {
 			context.breakLine();
-			final ChatComponentText nextComponent = new ChatComponentText(" §8[§c»§8] §7Afficher la page suivante");
-			final ChatStyle style = new ChatStyle();
-			style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§8» §cCliquez §7pour afficher la page suivante")));
-			style.setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + this.command + " help " + (page + 2)));
-			style.setColor(EnumChatFormatting.GRAY);
-			nextComponent.setChatStyle(style);
-			context.send(nextComponent);
+			final ComponentBuilder nextComponent = new ComponentBuilder(" §8[§c»§8] §7Afficher la page suivante");
+			nextComponent.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("§8» §cCliquez §7pour afficher la page suivante").create()));
+			nextComponent.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + this.command + " help " + (page + 2)));
+			nextComponent.color(ChatColor.GRAY);
+			context.send(nextComponent.create());
 		}
 
 		if (page != 0) {
 			if (page == maxPage - 1) {
 				context.breakLine();
 			}
-			final ChatComponentText previousComponent = new ChatComponentText(" §8[§c«§8] §7Afficher la page précédente");
-			final ChatStyle style = new ChatStyle();
-			style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§8» §cCliquez §7pour afficher la page précédente")));
-			style.setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + this.command + " help " + page));
-			style.setColor(EnumChatFormatting.GRAY);
-			previousComponent.setChatStyle(style);
-			context.send(previousComponent);
+			final ComponentBuilder previousComponent = new ComponentBuilder(" §8[§c«§8] §7Afficher la page précédente");
+			previousComponent.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("§8» §cCliquez §7pour afficher la page précédente").create()));
+			previousComponent.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + this.command + " help " + page));
+			previousComponent.color(ChatColor.GRAY);
+			context.send(previousComponent.create());
 		}
 
 		context.breakLine();
-		context.send(new ChatComponentText("§7§m" + StringUtils.repeat(CommandEntry.SPACER.charAt(0), length)));
+		context.send(new ComponentBuilder("§7§m" + StringUtils.repeat(CommandEntry.SPACER.charAt(0), length)).create());
 		context.breakLine();
 	}
 

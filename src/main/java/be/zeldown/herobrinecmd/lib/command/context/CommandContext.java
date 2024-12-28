@@ -4,42 +4,30 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.entity.Player;
+
 import be.zeldown.herobrinecmd.lib.SenderType;
 import be.zeldown.herobrinecmd.lib.command.exception.CommandConditionException;
 import be.zeldown.herobrinecmd.lib.command.parser.CommandParser;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import net.minecraft.command.ICommand;
-import net.minecraft.command.ICommandSender;
-import net.minecraft.command.server.CommandBlockLogic;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.network.rcon.RConConsoleSource;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.ChatStyle;
-import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.IChatComponent;
+import net.md_5.bungee.api.chat.BaseComponent;
 
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-@SideOnly(Side.SERVER)
 public final class CommandContext {
 
-	private final ICommandSender sender;
+	private final CommandSender sender;
 	private final SenderType type;
 
 	private final String command;
 	private final String[] args;
 
-	public static @NonNull CommandContext create(final @NonNull ICommandSender sender, final @NonNull ICommand command, final @NonNull String @NonNull [] args) {
-		return new CommandContext(sender, SenderType.get(sender), command.getCommandName(), args);
-	}
-
-	public static @NonNull CommandContext create(final @NonNull ICommandSender sender, final @NonNull String command, final @NonNull String @NonNull [] args) {
+	public static @NonNull CommandContext create(final @NonNull CommandSender sender, final @NonNull String command, final @NonNull String @NonNull [] args) {
 		return new CommandContext(sender, SenderType.get(sender), command, args);
 	}
 
@@ -60,61 +48,63 @@ public final class CommandContext {
 	}
 
 	public final @NonNull CommandContext breakLine() {
-		this.sender.addChatMessage(new ChatComponentText(""));
+		this.sender.sendMessage("");
 		return this;
 	}
 
-	public final @NonNull CommandContext send(final @NonNull IChatComponent message) {
-		this.sender.addChatMessage(message);
+	public final @NonNull CommandContext send(final @NonNull BaseComponent... message) {
+		if (this.sender instanceof Player) {
+			((Player) this.sender).spigot().sendMessage(message);
+		} else {
+			this.sender.sendMessage(BaseComponent.toPlainText(message));
+		}
 		return this;
 	}
 
 	public final @NonNull CommandContext send(final @NonNull String message) {
-		this.sender.addChatMessage(new ChatComponentText("§8[§6Command§8] §r" + message).setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RESET)));
+		this.sender.sendMessage("§8[§6Command§8] §r" + message);
 		return this;
 	}
 
 	public final @NonNull CommandContext success(final @NonNull String success) {
-		this.sender.addChatMessage(new ChatComponentText("§8[§6Command§8] §a" + success).setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GREEN)));
+		this.sender.sendMessage("§8[§6Command§8] §a" + success);
 		return this;
 	}
 
 	public final @NonNull CommandContext error(final @NonNull String error) {
-		this.sender.addChatMessage(new ChatComponentText("§8[§6Command§8] §c" + error).setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED)));
+		this.sender.sendMessage("§8[§6Command§8] §c" + error);
 		return this;
 	}
 
 	public final @NonNull CommandContext kick(final @NonNull String reason) {
-		if (this.sender instanceof EntityPlayerMP) {
-			((EntityPlayerMP) this.sender).playerNetServerHandler.kickPlayerFromServer(reason);
+		if (this.sender instanceof Player) {
+			((Player) this.sender).kickPlayer(reason);
 		}
 		return this;
 	}
 
-	public final EntityPlayerMP getPlayer() {
-		if (this.sender instanceof EntityPlayerMP) {
-			return (EntityPlayerMP) this.sender;
+	public final boolean hasPermission(final String permission) {
+		if (permission == null || permission.isEmpty()) {
+			return true;
+		}
+
+		if (!this.sender.hasPermission(permission)) {
+			return false;
+		}
+
+		return true;
+	}
+
+	public final Player getPlayer() {
+		if (this.sender instanceof Player) {
+			return (Player) this.sender;
 		}
 		return null;
 	}
 
-	public final MinecraftServer getConsole() {
-		if (this.sender instanceof MinecraftServer) {
-			return (MinecraftServer) this.sender;
-		}
-		return null;
-	}
-
-	public final CommandBlockLogic getCommandBlock() {
-		if (this.sender instanceof CommandBlockLogic) {
-			return (CommandBlockLogic) this.sender;
-		}
-		return null;
-	}
-
-	public final RConConsoleSource getRcon() {
-		if (this.sender instanceof RConConsoleSource) {
-			return (RConConsoleSource) this.sender;
+	public final ConsoleCommandSender getConsole() {
+		if (this.sender instanceof ConsoleCommandSender) {
+			return (ConsoleCommandSender) this.sender;
 		}
 		return null;
 	}
@@ -125,14 +115,6 @@ public final class CommandContext {
 
 	public final boolean isConsole() {
 		return this.type == SenderType.CONSOLE;
-	}
-
-	public final boolean isCommandBlock() {
-		return this.type == SenderType.COMMAND_BLOCK;
-	}
-
-	public final boolean isRcon() {
-		return this.type == SenderType.RCON;
 	}
 
 	public final <T> T get(final int index, final @NonNull Class<T> type) {

@@ -1,0 +1,5 @@
+name: "HerbrineCmd"
+description: "Advanced Command System based on annotations"
+author: "Zeldown"
+version: "1.0.0"
+main: "be.zeldown.herobrinecmd.internal.HerobrineCmdPlugin"

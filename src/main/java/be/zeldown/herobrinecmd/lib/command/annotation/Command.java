@@ -13,6 +13,7 @@ public @interface Command {
 
 	String[] command();
 	String description()  default "";
+	String permission()   default "";
 	SenderType[] sender() default SenderType.ALL;
 	boolean help()        default true;
 

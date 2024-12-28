@@ -10,23 +10,20 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 
 import org.apache.commons.lang3.StringUtils;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 
 import be.zeldown.herobrinecmd.lib.SenderType;
 import be.zeldown.herobrinecmd.lib.command.context.CommandContext;
 import be.zeldown.herobrinecmd.lib.command.parser.CommandParser;
 import be.zeldown.herobrinecmd.lib.entity.OfflinePlayer;
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.relauncher.Side;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.event.ClickEvent;
-import net.minecraft.event.HoverEvent;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.ChatStyle;
-import net.minecraft.util.EnumChatFormatting;
+import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
 
 @Getter
 @RequiredArgsConstructor
@@ -34,6 +31,7 @@ public final class SubCommandEntry {
 
 	private final String       name;
 	private final String       description;
+	private final String       permission;
 	private final SenderType[] sender;
 	private final boolean      help;
 	private final int          priority;
@@ -91,39 +89,35 @@ public final class SubCommandEntry {
 	}
 
 	public void help(final @NonNull CommandContext context) {
-		final ChatComponentText fullName = new ChatComponentText("§6/" + this.name);
-		fullName.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GOLD));
+		final List<BaseComponent[]> components = new ArrayList<>();
+
+		components.add(new ComponentBuilder(" §8» §6/" + this.name).color(ChatColor.GOLD).create());
 		for (final SubCommandParameter parameter : this.parameters) {
-			final ChatComponentText component = new ChatComponentText("§6" + parameter.getName());
-			component.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GOLD));
+			final ComponentBuilder component = new ComponentBuilder("§6" + parameter.getName());
+			component.color(ChatColor.GOLD);
 			if (parameter instanceof DynamicSubCommandParameter) {
 				final DynamicSubCommandParameter dynamicParameter = (DynamicSubCommandParameter) parameter;
 				if (dynamicParameter.getDescription() != null && !dynamicParameter.getDescription().isEmpty()) {
-					final ChatStyle style = component.getChatStyle();
-					style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§7" + StringUtils.capitalize(dynamicParameter.description.endsWith(".") ? dynamicParameter.description : dynamicParameter.description + "."))));
-					component.setChatStyle(style);
+					component.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("§7" + StringUtils.capitalize(dynamicParameter.getDescription().endsWith(".") ? dynamicParameter.getDescription() : dynamicParameter.getDescription() + ".")).create()));
 				}
 			}
 
-			fullName.appendText(" ");
-			fullName.appendSibling(component);
+			components.add(new ComponentBuilder(" ").create());
+			components.add(component.create());
 		}
 
-		final ChatComponentText root = new ChatComponentText(" §8» ");
-		root.appendSibling(fullName);
 		if (this.description != null && !this.description.isEmpty()) {
-			root.appendSibling(new ChatComponentText(" §7" + StringUtils.capitalize(this.description.endsWith(".") ? this.description : this.description + ".")).setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GRAY)));
+			components.add(new ComponentBuilder(" §7" + StringUtils.capitalize(this.description.endsWith(".") ? this.description : this.description + ".")).color(ChatColor.GRAY).create());
 		}
 
-		final ChatStyle style = new ChatStyle();
-		style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§8» §cCliquez §7pour compléter la commande.")));
-		style.setChatClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, fullName.getUnformattedText().replace("§6", "").replace("§7", "")));
-		root.setChatStyle(style);
-
-		context.send(root);
+		context.send(components.toArray(new BaseComponent[0]));
 	}
 
 	public boolean canExecute(final @NonNull CommandContext context) {
+		if (!context.hasPermission(this.permission)) {
+			return false;
+		}
+
 		for (final SenderType sender : this.sender) {
 			if (sender.isAllowed(context.getSender())) {
 				return true;
@@ -283,8 +277,8 @@ public final class SubCommandEntry {
 				for (final Enum<?> constant : constants) {
 					list.add(constant.name());
 				}
-			} else if ((EntityPlayer.class.isAssignableFrom(this.type) || OfflinePlayer.class.isAssignableFrom(this.type)) && FMLCommonHandler.instance().getSide() == Side.SERVER) {
-				list.addAll(Arrays.asList(MinecraftServer.getServer().getAllUsernames()));
+			} else if (Player.class.isAssignableFrom(this.type) || OfflinePlayer.class.isAssignableFrom(this.type)) {
+				list.addAll(Arrays.asList(Bukkit.getOnlinePlayers().stream().map(Player::getName).toArray(String[]::new)));
 			}
 			return list;
 		}

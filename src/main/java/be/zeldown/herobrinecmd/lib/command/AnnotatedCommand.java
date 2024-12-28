@@ -2,10 +2,13 @@ package be.zeldown.herobrinecmd.lib.command;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 
 import be.zeldown.herobrinecmd.lib.command.context.CommandContext;
 import be.zeldown.herobrinecmd.lib.command.exception.CommandConditionException;
@@ -14,31 +17,29 @@ import be.zeldown.herobrinecmd.lib.command.parser.dto.SubCommandEntry;
 import be.zeldown.herobrinecmd.lib.command.parser.dto.SubCommandEntry.SubCommandParameter;
 import be.zeldown.herobrinecmd.lib.command.parser.dto.SubCommandEntry.SubCommandScore;
 import lombok.Getter;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import net.minecraft.command.ICommand;
-import net.minecraft.command.ICommandSender;
-import net.minecraft.event.ClickEvent;
-import net.minecraft.event.HoverEvent;
-import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.ChatStyle;
-import net.minecraft.util.EnumChatFormatting;
-import scala.actors.threadpool.Arrays;
+import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
 
 @Getter
-@RequiredArgsConstructor
-public final class AnnotatedCommand implements ICommand {
+public final class AnnotatedCommand extends Command {
 
 	private final CommandEntry command;
 
-	@Override
-	public String getCommandName() {
-		return this.command.getCommand();
+	public AnnotatedCommand(final CommandEntry command) {
+		super(command.getCommand(), command.getDescription(), command.getCommand(), Arrays.asList(command.getAliases()));
+		this.command = command;
 	}
 
 	@Override
-	public void processCommand(final @NonNull ICommandSender sender, final @NonNull String @NonNull [] args) {
-		final CommandContext context = CommandContext.create(sender, this.getCommandName(), args);
+	public boolean execute(final CommandSender sender, final String label, final String[] args) {
+		final CommandContext context = CommandContext.create(sender, this.command.getCommand(), args);
+		if (!context.hasPermission(this.command.getPermission())) {
+			context.error("Vous n'avez pas la permission d'executer cette commande.");
+			return true;
+		}
+
 		if (args.length == 0) {
 			final SubCommandEntry rootSubCommand = this.command.getRoot();
 			if (rootSubCommand != null && rootSubCommand.canExecute(context)) {
@@ -49,20 +50,18 @@ public final class AnnotatedCommand implements ICommand {
 						final CommandConditionException condition = (CommandConditionException) ((InvocationTargetException) e).getTargetException();
 						final String error = condition.getMessage().substring(0, 1).toLowerCase() + condition.getMessage().substring(1);
 
-						final ChatComponentText component = new ChatComponentText("§8[§6Command§8] §cUne erreur est survenue, " + error);
-						final ChatStyle style = new ChatStyle();
-						style.setColor(EnumChatFormatting.RED);
-						style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§8» §cCliquez §7pour modifier la commande.")));
-						style.setChatClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/" + context.getFull()));
-						component.setChatStyle(style);
-						context.send(component);
-						return;
+						context.send(new ComponentBuilder("§8[§6Command§8] §cUne erreur est survenue, " + error)
+								.color(ChatColor.RED)
+								.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("§8» §cCliquez §7pour modifier la commande.").create()))
+								.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/" + context.getFull()))
+								.create());
+						return true;
 					}
 
 					context.error("Une erreur est survenue lors de l'execution de la commande.");
 					e.printStackTrace();
 				}
-				return;
+				return true;
 			}
 		}
 
@@ -116,77 +115,63 @@ public final class AnnotatedCommand implements ICommand {
 						final CommandConditionException condition = (CommandConditionException) ((InvocationTargetException) e).getTargetException();
 						final String error = condition.getMessage().substring(0, 1).toLowerCase() + condition.getMessage().substring(1);
 
-						final ChatComponentText component = new ChatComponentText("§8[§6Command§8] §cUne erreur est survenue, " + error);
-						final ChatStyle style = new ChatStyle();
-						style.setColor(EnumChatFormatting.RED);
-						style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§8» §cCliquez §7pour modifier la commande.")));
-						style.setChatClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/" + context.getFull()));
-						component.setChatStyle(style);
-						context.send(component);
-						return;
+						context.send(new ComponentBuilder("§8[§6Command§8] §cUne erreur est survenue, " + error)
+								.color(ChatColor.RED)
+								.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("§8» §cCliquez §7pour modifier la commande.").create()))
+								.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/" + context.getFull()))
+								.create());
+						return true;
 					}
 
 					context.error("Une erreur est survenue lors de l'execution de la commande.");
 					e.printStackTrace();
 				}
-				return;
+				return true;
 			}
 
 			final String header = "§8[§c/" + this.command.getCommand() + "§8]";
 			final String spacer = "§7§m" + StringUtils.repeat(CommandEntry.SPACER.charAt(0), (CommandEntry.SPACER.length() - (header.length() - 6)) / 2);
 			final int length = header.length() - 6 + (spacer.length() - 4) * 2 - 1;
 
-			final ChatComponentText headerComponent = new ChatComponentText(spacer + header + spacer);
+			final ComponentBuilder headerComponent = new ComponentBuilder(spacer + header + spacer);
 			if (this.command.getDescription() != null && !this.command.getDescription().isEmpty()) {
-				final ChatStyle style = new ChatStyle();
-				style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§7" + StringUtils.capitalize(this.command.getDescription().endsWith(".") ? this.command.getDescription() : this.command.getDescription() + "."))));
-				style.setColor(EnumChatFormatting.GRAY);
-				headerComponent.setChatStyle(style);
+				headerComponent
+				.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("§7" + StringUtils.capitalize(this.command.getDescription().endsWith(".") ? this.command.getDescription() : this.command.getDescription() + ".")).create()))
+				.color(ChatColor.GRAY);
 			}
 
 			context.breakLine();
-			context.send(headerComponent);
+			context.send(headerComponent.create());
 			context.breakLine();
 
-			context.send(new ChatComponentText(" §8» §cLa syntaxe de la commande est incorrecte.").setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED)));
+			context.send(new ComponentBuilder(" §8» §cLa syntaxe de la commande est incorrecte.").color(ChatColor.RED).create());
 			bestMatch.help(context);
 
 			context.breakLine();
-			final ChatComponentText nextComponent = new ChatComponentText(" §8[§c?§8] §7Afficher la page d'aide");
-			final ChatStyle style = new ChatStyle();
-			style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§8» §cCliquez §7pour afficher la page d'aide")));
-			style.setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + this.command.getCommand() + " help"));
-			style.setColor(EnumChatFormatting.GRAY);
-			nextComponent.setChatStyle(style);
-			context.send(nextComponent);
+			context.send(new ComponentBuilder(" §8[§c?§8] §7Afficher la page d'aide")
+					.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("§8» §cCliquez §7pour afficher la page d'aide.").create()))
+					.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + this.command.getCommand() + " help"))
+					.color(ChatColor.GRAY)
+					.create());
 
 			context.breakLine();
-			context.send(new ChatComponentText("§7§m" + StringUtils.repeat(CommandEntry.SPACER.charAt(0), length)));
+			context.send(new ComponentBuilder("§7§m" + StringUtils.repeat(CommandEntry.SPACER.charAt(0), length)).create());
 			context.breakLine();
-			return;
+			return true;
 		}
 
 		if (!this.command.isHelp()) {
 			context.error("Impossible de trouver une commande correspondante.");
-			return;
+			return true;
 		}
 
 		this.command.help(context, 0);
+		return true;
 	}
 
 	@Override
-	public String getCommandUsage(final ICommandSender sender) {
-		return "/" + this.getCommandName();
-	}
-
-	@Override
-	public List<?> getCommandAliases() {
-		return Arrays.asList(this.command.getAliases());
-	}
-
-	@Override
-	public List<?> addTabCompletionOptions(final ICommandSender sender, final String[] args) {
-		final CommandContext context = CommandContext.create(sender, this.getCommandName(), args);
+	public List<String> tabComplete(final CommandSender sender, final String alias, final String[] args) throws IllegalArgumentException {
+		final CommandContext context = CommandContext.create(sender, this.command.getCommand(), args);
 		final List<String> list = new ArrayList<>();
 
 		if (args.length == 0 || args.length == 1 && args[0].isEmpty()) {
@@ -240,21 +225,6 @@ public final class AnnotatedCommand implements ICommand {
 		}
 
 		return list.stream().filter(s -> s.regionMatches(true, 0, last, 0, last.length())).collect(Collectors.toList());
-	}
-
-	@Override
-	public boolean canCommandSenderUseCommand(final ICommandSender sender) {
-		return true;
-	}
-
-	@Override
-	public boolean isUsernameIndex(final String[] args, final int index) {
-		return false;
-	}
-
-	@Override
-	public int compareTo(final Object o) {
-		return this.getCommandName().compareTo(((ICommand) o).getCommandName());
 	}
 
 }

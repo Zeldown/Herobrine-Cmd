@@ -13,6 +13,7 @@ public @interface SubCommand {
 
 	String command();
 	String description()  default "";
+	String permission()   default "";
 	SenderType[] sender() default SenderType.NONE;
 	boolean help()        default true;
 	int priority()        default 0;

@@ -7,17 +7,16 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 
 import be.zeldown.herobrinecmd.lib.utils.FastUUID;
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.relauncher.Side;
 import lombok.Getter;
 import lombok.NonNull;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.world.World;
 
 @Getter
 public class OfflinePlayer {
@@ -26,9 +25,9 @@ public class OfflinePlayer {
 	private final UUID uuid;
 	private final String uuidString;
 
-	private final Optional<EntityPlayer> player;
+	private final Optional<Player> player;
 
-	private OfflinePlayer(final @NonNull String name, final @NonNull UUID uuid, final EntityPlayer player) {
+	private OfflinePlayer(final @NonNull String name, final @NonNull UUID uuid, final Player player) {
 		this.name = name;
 		this.uuid = uuid;
 		this.uuidString = FastUUID.toString(uuid);
@@ -47,16 +46,14 @@ public class OfflinePlayer {
 		return new OfflinePlayer(profile.getName(), profile.getId(), null);
 	}
 
-	public static @NonNull OfflinePlayer of(final @NonNull EntityPlayer player) {
-		return new OfflinePlayer(player.getCommandSenderName(), player.getUniqueID(), player);
+	public static @NonNull OfflinePlayer of(final @NonNull Player player) {
+		return new OfflinePlayer(player.getName(), player.getUniqueId(), player);
 	}
 
 	public static CompletableFuture<OfflinePlayer> load(final @NonNull String name) {
-		if (FMLCommonHandler.instance().getSide() == Side.SERVER) {
-			final EntityPlayer player = net.minecraft.server.MinecraftServer.getServer().getConfigurationManager().func_152612_a(name);
-			if (player != null) {
-				return CompletableFuture.completedFuture(OfflinePlayer.of(player));
-			}
+		final Player player = Bukkit.getPlayer(name);
+		if (player != null) {
+			return CompletableFuture.completedFuture(OfflinePlayer.of(player));
 		}
 
 		final CompletableFuture<OfflinePlayer> future = new CompletableFuture<>();
@@ -83,13 +80,9 @@ public class OfflinePlayer {
 	}
 
 	public static CompletableFuture<OfflinePlayer> load(final @NonNull UUID uuid) {
-		if (FMLCommonHandler.instance().getSide() == Side.SERVER) {
-			for (final World world : net.minecraft.server.MinecraftServer.getServer().worldServers) {
-				final EntityPlayer player = world.func_152378_a(uuid);
-				if (player != null) {
-					return CompletableFuture.completedFuture(OfflinePlayer.of(player));
-				}
-			}
+		final Player player = Bukkit.getPlayer(uuid);
+		if (player != null) {
+			return CompletableFuture.completedFuture(OfflinePlayer.of(player));
 		}
 
 		final CompletableFuture<OfflinePlayer> future = new CompletableFuture<>();
@@ -113,7 +106,7 @@ public class OfflinePlayer {
 	}
 
 	public boolean isOnline() {
-		return this.player.isPresent();
+		return this.player.isPresent() && this.player.get().isOnline();
 	}
 
 }

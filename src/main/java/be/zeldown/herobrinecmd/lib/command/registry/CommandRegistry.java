@@ -1,20 +1,19 @@
 package be.zeldown.herobrinecmd.lib.command.registry;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandMap;
+
 import be.zeldown.herobrinecmd.lib.command.AnnotatedCommand;
 import be.zeldown.herobrinecmd.lib.command.parser.CommandParser;
 import be.zeldown.herobrinecmd.lib.command.parser.dto.CommandEntry;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import lombok.NonNull;
-import net.minecraft.command.CommandHandler;
-import net.minecraft.server.MinecraftServer;
 
-@SideOnly(Side.SERVER)
 public final class CommandRegistry {
 
 	private static final List<Class<?>> registering = new ArrayList<>();
@@ -46,9 +45,19 @@ public final class CommandRegistry {
 		final CommandEntry command = CommandParser.parseCommand(clazz);
 
 		if (CommandRegistry.started) {
-			((CommandHandler) MinecraftServer.getServer().getCommandManager()).registerCommand(new AnnotatedCommand(command));
-			CommandRegistry.commands.put(command.getCommand(), command);
-			System.out.println("[CommandRegistry] Command " + command.getCommand() + " registered successfully.");
+			try {
+				final Field bukkitCommandMap = Bukkit.getServer().getClass().getDeclaredField("commandMap");
+				bukkitCommandMap.setAccessible(true);
+
+				final CommandMap commandMap = (CommandMap) bukkitCommandMap.get(Bukkit.getServer());
+				commandMap.register(command.getCommand(), new AnnotatedCommand(command));
+
+				CommandRegistry.commands.put(command.getCommand(), command);
+				System.out.println("[CommandRegistry] Command " + command.getCommand() + " registered successfully.");
+			} catch(final Exception e) {
+				System.out.println("[CommandRegistry] Error while registering command " + command.getCommand() + ".");
+				e.printStackTrace();
+			}
 			return;
 		}
 
