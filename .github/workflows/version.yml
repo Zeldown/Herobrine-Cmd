@@ -33,4 +33,4 @@ jobs:
         git add README.md
         git add build.gradle
         git commit -m "update: update version to ${TAG_NAME} (:bookmark:)"
-        git push origin HEAD:1.7.10
+        git push origin HEAD:forge/1.7.10
