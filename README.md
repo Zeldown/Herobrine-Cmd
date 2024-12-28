@@ -13,9 +13,9 @@
 
 A powerful annotation-based command system for Forge modding.
 
-Elevate your Minecraft mods with ForgeCommandFramework, designed to simplify and streamline command creation.
+Elevate your Minecraft plugin with Herobrine-Cmd, designed to simplify and streamline command creation.
 
-ForgeCommandFramework empowers developers by providing a highly customizable, annotation-driven API for defining commands, arguments, and subcommands—all without tedious boilerplate code.
+Herobrine-Cmd empowers developers by providing a highly customizable, annotation-driven API for defining commands, arguments, and subcommands—all without tedious boilerplate code.
 </div>
 
 # Example
