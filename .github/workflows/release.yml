@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 env:
-  FILE: herobrinecmd.jar
+  FILE: herobrine-cmd.jar
   NAME: HerobrineCmd
 
 jobs:
